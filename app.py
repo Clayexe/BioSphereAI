@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, scrolledtext
 
+from ai.ai import RecommendationAssistant
 from analytics.butterfly import calculate as butterfly_score
 from analytics.habitat import calculate as habitat_score
 from analytics.plant import calculate as plant_score
@@ -34,21 +35,31 @@ class BioSphereAIApp(tk.Tk):
         self.style.configure("Search.TFrame", background="#0f172a")
 
         self.service = WeatherService()
+        self.assistant = RecommendationAssistant()
 
         self.build_layout()
         self.load_default_data()
 
     def build_layout(self):
-        container = tk.Frame(self, bg="#07111f")
-        container.pack(fill="both", expand=True, padx=18, pady=18)
+        self.canvas = tk.Canvas(self, bg="#07111f", highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True, padx=(18, 0), pady=18)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        header = tk.Frame(container, bg="#07111f")
+        self.content_frame = tk.Frame(self.canvas, bg="#07111f")
+        self.canvas.create_window((0, 0), window=self.content_frame, anchor="nw")
+        self.content_frame.bind("<Configure>", lambda event: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        header = tk.Frame(self.content_frame, bg="#07111f")
         header.pack(fill="x", pady=(0, 18))
 
         tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
         tk.Label(header, text="A modern ecological dashboard from live weather conditions", bg="#07111f", fg="#93c5fd", font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 0))
 
-        search_frame = tk.Frame(container, bg="#0f172a", padx=14, pady=14)
+        search_frame = tk.Frame(self.content_frame, bg="#0f172a", padx=14, pady=14)
         search_frame.pack(fill="x", pady=(0, 16))
 
         tk.Label(search_frame, text="ZIP Code", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 11, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 12))
@@ -65,10 +76,10 @@ class BioSphereAIApp(tk.Tk):
 
         search_frame.columnconfigure(1, weight=1)
 
-        self.weather_card = self.create_card(container, "Current Weather")
+        self.weather_card, self.weather_body = self.create_card(self.content_frame, "Current Weather")
         self.weather_card.pack(fill="x", pady=(0, 12))
 
-        metrics_grid = tk.Frame(container, bg="#07111f")
+        metrics_grid = tk.Frame(self.content_frame, bg="#07111f")
         metrics_grid.pack(fill="both", expand=True)
 
         self.metric_cards = {
@@ -85,14 +96,34 @@ class BioSphereAIApp(tk.Tk):
 
         metrics_grid.columnconfigure((0, 1, 2, 3), weight=1)
 
+        self.recommendation_card, self.recommendation_body = self.create_card(self.content_frame, "AI Assistant Recommendations")
+        self.recommendation_card.pack(fill="both", expand=True)
+
+        self.recommendations_box = scrolledtext.ScrolledText(
+            self.recommendation_body,
+            wrap=tk.WORD,
+            bg="#0b1220",
+            fg="#f8fafc",
+            insertbackground="#f8fafc",
+            relief="flat",
+            padx=12,
+            pady=10,
+            font=("Segoe UI", 10),
+            height=12,
+        )
+        self.recommendations_box.pack(fill="both", expand=True, pady=(10, 0))
+
     def create_card(self, parent, title):
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
         title_label = ttk.Label(frame, text=title, style="CardTitle.TLabel")
         title_label.pack(anchor="w")
 
         body = tk.Frame(frame, bg="#0f172a")
-        body.pack(fill="x", pady=(8, 0))
-        return frame
+        body.pack(fill="both", expand=True, pady=(8, 0))
+        return frame, body
+
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
 
     def create_metric_card(self, parent, title, value):
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
@@ -102,13 +133,13 @@ class BioSphereAIApp(tk.Tk):
         return frame
 
     def clear_weather_card(self):
-        for widget in self.weather_card.winfo_children():
+        for widget in self.weather_body.winfo_children():
             widget.destroy()
 
     def render_weather(self, weather):
         self.clear_weather_card()
 
-        weather_grid = tk.Frame(self.weather_card, bg="#0f172a")
+        weather_grid = tk.Frame(self.weather_body, bg="#0f172a")
         weather_grid.pack(fill="x", pady=(10, 0))
 
         location = f"{weather['city']}, {weather['state']}"
@@ -136,6 +167,15 @@ class BioSphereAIApp(tk.Tk):
         self.metric_cards["bee"].winfo_children()[1].configure(text=f"{bee}%")
         self.metric_cards["butterfly"].winfo_children()[1].configure(text=f"{butterfly}%")
         self.metric_cards["habitat"].winfo_children()[1].configure(text=f"{habitat}%")
+
+        scores = {
+            "plant": plant,
+            "bee": bee,
+            "butterfly": butterfly,
+            "habitat": habitat,
+        }
+        self.recommendations_box.delete("1.0", tk.END)
+        self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores))
 
     def load_default_data(self):
         self.load_location_data()
