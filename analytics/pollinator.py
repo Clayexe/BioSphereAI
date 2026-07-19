@@ -1,5 +1,5 @@
+# Estimate bee activity based on temperature, wind, and precipitation pressure.
 def calculate(weather):
-
     score = 100
 
     temp = weather["temperature"]
