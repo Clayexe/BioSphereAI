@@ -1,5 +1,5 @@
+# Estimate butterfly activity from temperature, wind, and rain conditions.
 def calculate(weather):
-
     score = 100
 
     temp = weather["temperature"]
