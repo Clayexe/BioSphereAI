@@ -1,6 +1,9 @@
 from database.database import Database
-db=Database()
 
+# Initialize the database connection once for schema creation.
+db = Database()
+
+# Store the latest weather snapshot for each ZIP code refresh.
 db.execute("""
 CREATE TABLE IF NOT EXISTS weather(
     id INTEGER PRIMARY KEY,
@@ -14,6 +17,7 @@ CREATE TABLE IF NOT EXISTS weather(
 )
 """)
 
+# Store the calculated environmental score breakdown for reporting and history.
 db.execute("""
 CREATE TABLE IF NOT EXISTS scores(
     id INTEGER PRIMARY KEY,
