@@ -1,3 +1,4 @@
+# Estimate plant resilience from temperature and rainfall conditions.
 def calculate(weather):
     score = 100
     temp = weather["temperature"]
@@ -8,8 +9,8 @@ def calculate(weather):
 
     if temp < 45:
         score -= 15
-    
+
     if precip < 10:
         score -= 20
 
-    return max(score,0)
+    return max(score, 0)
