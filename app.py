@@ -10,6 +10,7 @@ from services.weather_service import WeatherService
 
 
 class BioSphereAIApp(tk.Tk):
+    # Main desktop window for the BioSphereAI dashboard.
     def __init__(self):
         super().__init__()
         self.title("BioSphereAI")
@@ -41,6 +42,7 @@ class BioSphereAIApp(tk.Tk):
         self.load_default_data()
 
     def build_layout(self):
+        # Create a scrollable canvas so the window can be moved vertically.
         self.canvas = tk.Canvas(self, bg="#07111f", highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollbar.pack(side="right", fill="y")
@@ -53,12 +55,14 @@ class BioSphereAIApp(tk.Tk):
 
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
+        # Header area for the app title and subtitle.
         header = tk.Frame(self.content_frame, bg="#07111f")
         header.pack(fill="x", pady=(0, 18))
 
         tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
         tk.Label(header, text="A modern ecological dashboard from live weather conditions", bg="#07111f", fg="#93c5fd", font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 0))
 
+        # Search / refresh area for ZIP-based weather lookup.
         search_frame = tk.Frame(self.content_frame, bg="#0f172a", padx=14, pady=14)
         search_frame.pack(fill="x", pady=(0, 16))
 
@@ -76,9 +80,11 @@ class BioSphereAIApp(tk.Tk):
 
         search_frame.columnconfigure(1, weight=1)
 
+        # Weather summary card that updates whenever the ZIP code changes.
         self.weather_card, self.weather_body = self.create_card(self.content_frame, "Current Weather")
         self.weather_card.pack(fill="x", pady=(0, 12))
 
+        # Grid of score cards for plant, bee, butterfly, and habitat health.
         metrics_grid = tk.Frame(self.content_frame, bg="#07111f")
         metrics_grid.pack(fill="both", expand=True)
 
@@ -96,6 +102,7 @@ class BioSphereAIApp(tk.Tk):
 
         metrics_grid.columnconfigure((0, 1, 2, 3), weight=1)
 
+        # AI recommendation panel that displays practical suggestions from the live score data.
         self.recommendation_card, self.recommendation_body = self.create_card(self.content_frame, "AI Assistant Recommendations")
         self.recommendation_card.pack(fill="both", expand=True)
 
@@ -114,6 +121,7 @@ class BioSphereAIApp(tk.Tk):
         self.recommendations_box.pack(fill="both", expand=True, pady=(10, 0))
 
     def create_card(self, parent, title):
+        # Shared helper for producing a styled card with a title and content body.
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
         title_label = ttk.Label(frame, text=title, style="CardTitle.TLabel")
         title_label.pack(anchor="w")
@@ -123,9 +131,11 @@ class BioSphereAIApp(tk.Tk):
         return frame, body
 
     def _on_mousewheel(self, event):
+        # Scroll the dashboard vertically when the user spins the mouse wheel.
         self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
 
     def create_metric_card(self, parent, title, value):
+        # Build the compact score tiles shown in the dashboard grid.
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
         ttk.Label(frame, text=title, style="CardTitle.TLabel").pack(anchor="w")
         ttk.Label(frame, text=value, style="Value.TLabel").pack(anchor="w", pady=(10, 0))
@@ -137,6 +147,7 @@ class BioSphereAIApp(tk.Tk):
             widget.destroy()
 
     def render_weather(self, weather):
+        # Paint the current weather summary using the live weather payload.
         self.clear_weather_card()
 
         weather_grid = tk.Frame(self.weather_body, bg="#0f172a")
@@ -158,6 +169,7 @@ class BioSphereAIApp(tk.Tk):
             tk.Label(weather_grid, text=value, bg="#0f172a", fg="#f8fafc", font=("Segoe UI", 11, "bold")).grid(row=i, column=1, sticky="w", padx=(12, 0), pady=(10, 0))
 
     def update_scores(self, weather):
+        # Recalculate all ecosystem scores and refresh the UI tiles and AI advice.
         plant = plant_score(weather)
         bee = bee_score(weather)
         butterfly = butterfly_score(weather)
@@ -178,9 +190,11 @@ class BioSphereAIApp(tk.Tk):
         self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores))
 
     def load_default_data(self):
+        # Load the default ZIP code when the app first opens.
         self.load_location_data()
 
     def load_location_data(self):
+        # Fetch weather data for the entered ZIP code and update the dashboard.
         zipcode = self.zip_entry.get().strip()
 
         if not zipcode:
