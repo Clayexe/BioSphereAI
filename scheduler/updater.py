@@ -9,12 +9,14 @@ from analytics.pollinator import calculate as bee_score
 from analytics.butterfly import calculate as butterfly_score
 from analytics.habitat import calculate as habitat_score
 
+# Background scheduler that refreshes the stored weather and score history.
 scheduler = BackgroundScheduler()
 
+# Shared service instance used to keep the refresh process consistent.
 service = WeatherService()
 
+# Pull the latest weather, store it, and then compute and save the ecosystem scores.
 def update():
-
     weather = service.get_by_zip("13760")
 
     save_weather(weather)
