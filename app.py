@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
+from tkintermapview import TkinterMapView
 
 from ai.ai import RecommendationAssistant
 from analytics.butterfly import calculate as butterfly_score
@@ -62,7 +63,7 @@ class BioSphereAIApp(tk.Tk):
         tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
         tk.Label(header, text="A modern ecological dashboard from live weather conditions", bg="#07111f", fg="#93c5fd", font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 0))
 
-        # Search / refresh area for ZIP-based weather lookup.
+        # Search / refresh area for ZIP-based weather lookup and simple map selection.
         search_frame = tk.Frame(self.content_frame, bg="#0f172a", padx=14, pady=14)
         search_frame.pack(fill="x", pady=(0, 16))
 
@@ -77,6 +78,33 @@ class BioSphereAIApp(tk.Tk):
 
         self.status_label = tk.Label(search_frame, text="Loading live forecast…", bg="#0f172a", fg="#a7f3d0", font=("Segoe UI", 10, "bold"))
         self.status_label.grid(row=0, column=3, sticky="w", padx=(18, 0))
+
+        self.map_frame = tk.Frame(search_frame, bg="#0f172a")
+        self.map_frame.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(12, 0))
+        self.map_frame.columnconfigure(0, weight=1)
+        self.map_frame.rowconfigure(0, weight=1)
+
+        self.map_controls = tk.Frame(self.map_frame, bg="#0f172a")
+        self.map_controls.pack(side="right", fill="y", padx=(8, 0))
+
+        self.map_widget = TkinterMapView(self.map_frame, width=760, height=220, corner_radius=0)
+        self.map_widget.pack(side="left", fill="both", expand=True)
+        self.map_widget.configure(width=760, height=220)
+        self.map_widget.set_position(37.7749, -122.4194)
+        self.map_widget.set_zoom(10)
+        self.map_widget.add_left_click_map_command(self.on_map_click)
+        self.map_widget.button_zoom_in.canvas_rect = None
+        self.map_widget.button_zoom_out.canvas_rect = None
+        self.map_widget.button_zoom_in.canvas_text = None
+        self.map_widget.button_zoom_out.canvas_text = None
+        self.map_widget.button_zoom_in.map_widget = None
+        self.map_widget.button_zoom_out.map_widget = None
+
+        ttk.Button(self.map_controls, text="+", width=3, command=lambda: self.map_widget.set_zoom(self.map_widget.zoom + 1)).pack(pady=(0, 6))
+        ttk.Button(self.map_controls, text="−", width=3, command=lambda: self.map_widget.set_zoom(self.map_widget.zoom - 1)).pack()
+
+        self.map_hint = tk.Label(self.map_frame, text="Click anywhere on the map to use that location for the weather forecast.", bg="#0f172a", fg="#93c5fd", font=("Segoe UI", 10))
+        self.map_hint.pack(anchor="w", pady=(8, 0))
 
         search_frame.columnconfigure(1, weight=1)
 
@@ -141,6 +169,22 @@ class BioSphereAIApp(tk.Tk):
         ttk.Label(frame, text=value, style="Value.TLabel").pack(anchor="w", pady=(10, 0))
         ttk.Label(frame, text="Live environmental score", style="Body.TLabel").pack(anchor="w", pady=(4, 0))
         return frame
+
+    def on_map_click(self, coordinates):
+        lat, lon = coordinates
+        self.map_widget.delete_all_marker()
+        self.map_widget.set_marker(lat, lon, text="Selected location")
+        self.status_label.config(text=f"Using map selection at {lat:.4f}, {lon:.4f}")
+        self.update_idletasks()
+
+        try:
+            weather = self.service.get_by_coords(lat, lon)
+            self.render_weather(weather)
+            self.update_scores(weather)
+            self.status_label.config(text=f"Loaded forecast for {weather['city']}, {weather['state']}")
+        except Exception as exc:
+            messagebox.showerror("Forecast Error", f"Unable to load weather data:\n{exc}")
+            self.status_label.config(text="Unable to refresh forecast")
 
     def clear_weather_card(self):
         for widget in self.weather_body.winfo_children():
