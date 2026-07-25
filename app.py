@@ -38,6 +38,7 @@ class BioSphereAIApp(tk.Tk):
 
         self.service = WeatherService()
         self.assistant = RecommendationAssistant()
+        self.current_weather = None
 
         self.build_layout()
         self.load_default_data()
@@ -222,8 +223,16 @@ class BioSphereAIApp(tk.Tk):
             tk.Label(weather_grid, text=f"{key}:", bg="#0f172a", fg="#94a3b8", font=("Segoe UI", 10, "bold")).grid(row=i, column=0, sticky="w", pady=(10, 0))
             tk.Label(weather_grid, text=value, bg="#0f172a", fg="#f8fafc", font=("Segoe UI", 11, "bold")).grid(row=i, column=1, sticky="w", padx=(12, 0), pady=(10, 0))
 
-    def update_scores(self, weather):
+    def update_scores(self, weather=None):
         # Recalculate all ecosystem scores and refresh the UI tiles and AI advice.
+        if weather is None:
+            weather = self.current_weather
+
+        if weather is None:
+            return
+
+        self.current_weather = weather
+
         plant = plant_score(weather)
         bee = bee_score(weather)
         butterfly = butterfly_score(weather)
