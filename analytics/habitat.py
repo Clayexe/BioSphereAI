@@ -35,6 +35,18 @@ def calculate(*args):
 
         return max(min(round(score), 100), 0)
 
+    if len(args) == 4:
+        plant, bee, butterfly, canopy = [float(value) for value in args]
+        scores = (plant, bee, butterfly, canopy)
+        average = sum(scores) / 4
+        spread = max(scores) - min(scores)
+
+        weighted_score = (plant * 0.30) + (bee * 0.25) + (butterfly * 0.20) + (canopy * 0.25)
+        stability_score = max(0, 100 - (spread * 1.10))
+
+        habitat_score = round((weighted_score * 0.55) + (average * 0.25) + (stability_score * 0.20))
+        return max(min(habitat_score, 100), 0)
+
     if len(args) == 3:
         plant, bee, butterfly = [float(value) for value in args]
         scores = (plant, bee, butterfly)
@@ -47,4 +59,4 @@ def calculate(*args):
         habitat_score = round((weighted_score * 0.55) + (average * 0.25) + (stability_score * 0.20))
         return max(min(habitat_score, 100), 0)
 
-    raise ValueError("Habitat score expects either a weather dict or three numeric ecosystem scores.")
+    raise ValueError("Habitat score expects either a weather dict, three numeric ecosystem scores, or four scores including canopy cover.")
