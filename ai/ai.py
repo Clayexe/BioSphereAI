@@ -47,6 +47,8 @@ class RecommendationAssistant:
             prompt_focus = []
             if any(term in prompt for term in ["water", "moisture", "irrigation", "rain"]):
                 prompt_focus.append("Prioritize water retention with mulch, rain gardens, or irrigation planning.")
+            if any(term in prompt for term in ["canopy", "tree", "trees", "cover"]):
+                prompt_focus.append("Increase canopy cover with layered trees and shrubs to improve cooling and habitat structure.")
             if any(term in prompt for term in ["shade", "cool", "heat"]):
                 prompt_focus.append("Add shade structures or cooler, heat-tolerant planting zones.")
             if any(term in prompt for term in ["pollinator", "bee", "butterfly"]):
