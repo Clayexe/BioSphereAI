@@ -134,6 +134,16 @@ class BioSphereAIApp(tk.Tk):
         self.recommendation_card, self.recommendation_body = self.create_card(self.content_frame, "AI Assistant Recommendations")
         self.recommendation_card.pack(fill="both", expand=True)
 
+        prompt_frame = tk.Frame(self.recommendation_body, bg="#0f172a")
+        prompt_frame.pack(fill="x", pady=(6, 10))
+
+        tk.Label(prompt_frame, text="Describe what you want the AI to focus on", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        self.prompt_entry = ttk.Entry(prompt_frame, style="Search.TEntry")
+        self.prompt_entry.pack(fill="x", pady=(6, 0))
+        self.prompt_entry.insert(0, "Improve water retention and shade")
+
+        ttk.Button(prompt_frame, text="Generate advice", style="Primary.TButton", command=self.update_scores).pack(anchor="e", pady=(8, 0))
+
         self.recommendations_box = scrolledtext.ScrolledText(
             self.recommendation_body,
             wrap=tk.WORD,
@@ -230,8 +240,9 @@ class BioSphereAIApp(tk.Tk):
             "butterfly": butterfly,
             "habitat": habitat,
         }
+        user_prompt = self.prompt_entry.get().strip() if hasattr(self, "prompt_entry") else ""
         self.recommendations_box.delete("1.0", tk.END)
-        self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores))
+        self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores, user_prompt=user_prompt))
 
     def load_default_data(self):
         # Load the default ZIP code when the app first opens.
