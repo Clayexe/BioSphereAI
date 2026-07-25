@@ -4,6 +4,7 @@ from tkintermapview import TkinterMapView
 
 from ai.ai import RecommendationAssistant
 from analytics.butterfly import calculate as butterfly_score
+from analytics.canopy import calculate as canopy_score
 from analytics.habitat import calculate as habitat_score
 from analytics.plant import calculate as plant_score
 from analytics.pollinator import calculate as bee_score
@@ -121,15 +122,17 @@ class BioSphereAIApp(tk.Tk):
             "plant": self.create_metric_card(metrics_grid, "🌱 Plant Health", "0%"),
             "bee": self.create_metric_card(metrics_grid, "🐝 Bee Activity", "0%"),
             "butterfly": self.create_metric_card(metrics_grid, "🦋 Butterfly Activity", "0%"),
+            "canopy": self.create_metric_card(metrics_grid, "🌲 Canopy Cover", "0%"),
             "habitat": self.create_metric_card(metrics_grid, "🌳 Habitat Health", "0%"),
         }
 
         self.metric_cards["plant"].grid(row=0, column=0, padx=(0, 12), pady=(0, 12), sticky="nsew")
         self.metric_cards["bee"].grid(row=0, column=1, padx=(0, 12), pady=(0, 12), sticky="nsew")
         self.metric_cards["butterfly"].grid(row=0, column=2, padx=(0, 12), pady=(0, 12), sticky="nsew")
-        self.metric_cards["habitat"].grid(row=0, column=3, pady=(0, 12), sticky="nsew")
+        self.metric_cards["canopy"].grid(row=0, column=3, padx=(0, 12), pady=(0, 12), sticky="nsew")
+        self.metric_cards["habitat"].grid(row=0, column=4, pady=(0, 12), sticky="nsew")
 
-        metrics_grid.columnconfigure((0, 1, 2, 3), weight=1)
+        metrics_grid.columnconfigure((0, 1, 2, 3, 4), weight=1)
 
         # AI recommendation panel that displays practical suggestions from the live score data.
         self.recommendation_card, self.recommendation_body = self.create_card(self.content_frame, "AI Assistant Recommendations")
@@ -142,6 +145,14 @@ class BioSphereAIApp(tk.Tk):
         self.prompt_entry = ttk.Entry(prompt_frame, style="Search.TEntry")
         self.prompt_entry.pack(fill="x", pady=(6, 0))
         self.prompt_entry.insert(0, "Improve water retention and shade")
+
+        canopy_frame = tk.Frame(prompt_frame, bg="#0f172a")
+        canopy_frame.pack(fill="x", pady=(10, 0))
+
+        tk.Label(canopy_frame, text="Canopy cover (%)", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        self.canopy_entry = ttk.Entry(canopy_frame, style="Search.TEntry")
+        self.canopy_entry.pack(fill="x", pady=(6, 0))
+        self.canopy_entry.insert(0, "50")
 
         ttk.Button(prompt_frame, text="Generate advice", style="Primary.TButton", command=self.update_scores).pack(anchor="e", pady=(8, 0))
 
@@ -236,22 +247,32 @@ class BioSphereAIApp(tk.Tk):
         plant = plant_score(weather)
         bee = bee_score(weather)
         butterfly = butterfly_score(weather)
-        habitat = habitat_score(plant, bee, butterfly)
+        canopy = self._read_canopy_cover()
+        canopy_value = canopy_score(weather, canopy)
+        habitat = habitat_score(plant, bee, butterfly, canopy_value)
 
         self.metric_cards["plant"].winfo_children()[1].configure(text=f"{plant}%")
         self.metric_cards["bee"].winfo_children()[1].configure(text=f"{bee}%")
         self.metric_cards["butterfly"].winfo_children()[1].configure(text=f"{butterfly}%")
+        self.metric_cards["canopy"].winfo_children()[1].configure(text=f"{canopy_value}%")
         self.metric_cards["habitat"].winfo_children()[1].configure(text=f"{habitat}%")
 
         scores = {
             "plant": plant,
             "bee": bee,
             "butterfly": butterfly,
+            "canopy": canopy_value,
             "habitat": habitat,
         }
         user_prompt = self.prompt_entry.get().strip() if hasattr(self, "prompt_entry") else ""
         self.recommendations_box.delete("1.0", tk.END)
         self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores, user_prompt=user_prompt))
+
+    def _read_canopy_cover(self):
+        try:
+            return max(0, min(100, float(self.canopy_entry.get().strip())))
+        except ValueError:
+            return 50
 
     def load_default_data(self):
         # Load the default ZIP code when the app first opens.
