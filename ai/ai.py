@@ -7,11 +7,10 @@ class RecommendationAssistant:
     def __init__(self):
         self.low_score_threshold = 70
 
-    def recommend(self, weather, scores, user_prompt=None):
+    def recommend(self, weather, scores):
         temperature = weather["temperature"]
-        wind_speed = int(str(weather["wind_speed"]).split()[0])
+        wind_speed = int(weather["wind_speed"].split()[0])
         precipitation = weather["precipitation_probability"]
-        prompt = (user_prompt or "").strip().lower()
 
         suggestions = []
 
@@ -43,29 +42,11 @@ class RecommendationAssistant:
         if scores["habitat"] < self.low_score_threshold:
             suggestions.append("Habitat health needs more ecosystem balance. Diversify planting, ensure water access, and give pollinators a broader range of shelter and forage.")
 
-        if prompt:
-            prompt_focus = []
-            if any(term in prompt for term in ["water", "moisture", "irrigation", "rain"]):
-                prompt_focus.append("Prioritize water retention with mulch, rain gardens, or irrigation planning.")
-            if any(term in prompt for term in ["canopy", "tree", "trees", "cover"]):
-                prompt_focus.append("Increase canopy cover with layered trees and shrubs to improve cooling and habitat structure.")
-            if any(term in prompt for term in ["shade", "cool", "heat"]):
-                prompt_focus.append("Add shade structures or cooler, heat-tolerant planting zones.")
-            if any(term in prompt for term in ["pollinator", "bee", "butterfly"]):
-                prompt_focus.append("Expand pollinator-friendly habitat with nectar-rich and host plants.")
-            if any(term in prompt for term in ["soil", "nutrient", "fertil"]):
-                prompt_focus.append("Improve soil health with compost, cover crops, and native rooting layers.")
-            if any(term in prompt for term in ["wind", "shelter", "protect"]):
-                prompt_focus.append("Increase sheltering and wind buffering with hedges or low barriers.")
-
-            if prompt_focus:
-                suggestions = prompt_focus + suggestions
-
         if not suggestions:
             suggestions.append("The ecosystem is trending well. Keep the current mix of shade, water access, and pollinator-friendly planting to sustain the score.")
 
         return suggestions
 
-    def summarize(self, weather, scores, user_prompt=None):
-        recommendations = self.recommend(weather, scores, user_prompt=user_prompt)
+    def summarize(self, weather, scores):
+        recommendations = self.recommend(weather, scores)
         return "\n\n".join(f"• {item}" for item in recommendations)

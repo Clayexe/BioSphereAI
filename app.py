@@ -1,10 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
-from tkintermapview import TkinterMapView
 
 from ai.ai import RecommendationAssistant
 from analytics.butterfly import calculate as butterfly_score
-from analytics.canopy import calculate as canopy_score
 from analytics.habitat import calculate as habitat_score
 from analytics.plant import calculate as plant_score
 from analytics.pollinator import calculate as bee_score
@@ -39,7 +37,6 @@ class BioSphereAIApp(tk.Tk):
 
         self.service = WeatherService()
         self.assistant = RecommendationAssistant()
-        self.current_weather = None
 
         self.build_layout()
         self.load_default_data()
@@ -65,7 +62,7 @@ class BioSphereAIApp(tk.Tk):
         tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
         tk.Label(header, text="A modern ecological dashboard from live weather conditions", bg="#07111f", fg="#93c5fd", font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 0))
 
-        # Search / refresh area for ZIP-based weather lookup and simple map selection.
+        # Search / refresh area for ZIP-based weather lookup.
         search_frame = tk.Frame(self.content_frame, bg="#0f172a", padx=14, pady=14)
         search_frame.pack(fill="x", pady=(0, 16))
 
@@ -81,33 +78,6 @@ class BioSphereAIApp(tk.Tk):
         self.status_label = tk.Label(search_frame, text="Loading live forecast…", bg="#0f172a", fg="#a7f3d0", font=("Segoe UI", 10, "bold"))
         self.status_label.grid(row=0, column=3, sticky="w", padx=(18, 0))
 
-        self.map_frame = tk.Frame(search_frame, bg="#0f172a")
-        self.map_frame.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(12, 0))
-        self.map_frame.columnconfigure(0, weight=1)
-        self.map_frame.rowconfigure(0, weight=1)
-
-        self.map_controls = tk.Frame(self.map_frame, bg="#0f172a")
-        self.map_controls.pack(side="right", fill="y", padx=(8, 0))
-
-        self.map_widget = TkinterMapView(self.map_frame, width=760, height=220, corner_radius=0)
-        self.map_widget.pack(side="left", fill="both", expand=True)
-        self.map_widget.configure(width=760, height=220)
-        self.map_widget.set_position(37.7749, -122.4194)
-        self.map_widget.set_zoom(10)
-        self.map_widget.add_left_click_map_command(self.on_map_click)
-        self.map_widget.button_zoom_in.canvas_rect = None
-        self.map_widget.button_zoom_out.canvas_rect = None
-        self.map_widget.button_zoom_in.canvas_text = None
-        self.map_widget.button_zoom_out.canvas_text = None
-        self.map_widget.button_zoom_in.map_widget = None
-        self.map_widget.button_zoom_out.map_widget = None
-
-        ttk.Button(self.map_controls, text="+", width=3, command=lambda: self.map_widget.set_zoom(self.map_widget.zoom + 1)).pack(pady=(0, 6))
-        ttk.Button(self.map_controls, text="−", width=3, command=lambda: self.map_widget.set_zoom(self.map_widget.zoom - 1)).pack()
-
-        self.map_hint = tk.Label(self.map_frame, text="Click anywhere on the map to use that location for the weather forecast.", bg="#0f172a", fg="#93c5fd", font=("Segoe UI", 10))
-        self.map_hint.pack(anchor="w", pady=(8, 0))
-
         search_frame.columnconfigure(1, weight=1)
 
         # Weather summary card that updates whenever the ZIP code changes.
@@ -122,39 +92,19 @@ class BioSphereAIApp(tk.Tk):
             "plant": self.create_metric_card(metrics_grid, "🌱 Plant Health", "0%"),
             "bee": self.create_metric_card(metrics_grid, "🐝 Bee Activity", "0%"),
             "butterfly": self.create_metric_card(metrics_grid, "🦋 Butterfly Activity", "0%"),
-            "canopy": self.create_metric_card(metrics_grid, "🌲 Canopy Cover", "0%"),
             "habitat": self.create_metric_card(metrics_grid, "🌳 Habitat Health", "0%"),
         }
 
         self.metric_cards["plant"].grid(row=0, column=0, padx=(0, 12), pady=(0, 12), sticky="nsew")
         self.metric_cards["bee"].grid(row=0, column=1, padx=(0, 12), pady=(0, 12), sticky="nsew")
         self.metric_cards["butterfly"].grid(row=0, column=2, padx=(0, 12), pady=(0, 12), sticky="nsew")
-        self.metric_cards["canopy"].grid(row=0, column=3, padx=(0, 12), pady=(0, 12), sticky="nsew")
-        self.metric_cards["habitat"].grid(row=0, column=4, pady=(0, 12), sticky="nsew")
+        self.metric_cards["habitat"].grid(row=0, column=3, pady=(0, 12), sticky="nsew")
 
-        metrics_grid.columnconfigure((0, 1, 2, 3, 4), weight=1)
+        metrics_grid.columnconfigure((0, 1, 2, 3), weight=1)
 
         # AI recommendation panel that displays practical suggestions from the live score data.
         self.recommendation_card, self.recommendation_body = self.create_card(self.content_frame, "AI Assistant Recommendations")
         self.recommendation_card.pack(fill="both", expand=True)
-
-        prompt_frame = tk.Frame(self.recommendation_body, bg="#0f172a")
-        prompt_frame.pack(fill="x", pady=(6, 10))
-
-        tk.Label(prompt_frame, text="Describe what you want the AI to focus on", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.prompt_entry = ttk.Entry(prompt_frame, style="Search.TEntry")
-        self.prompt_entry.pack(fill="x", pady=(6, 0))
-        self.prompt_entry.insert(0, "Improve water retention and shade")
-
-        canopy_frame = tk.Frame(prompt_frame, bg="#0f172a")
-        canopy_frame.pack(fill="x", pady=(10, 0))
-
-        tk.Label(canopy_frame, text="Canopy cover (%)", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.canopy_entry = ttk.Entry(canopy_frame, style="Search.TEntry")
-        self.canopy_entry.pack(fill="x", pady=(6, 0))
-        self.canopy_entry.insert(0, "50")
-
-        ttk.Button(prompt_frame, text="Generate advice", style="Primary.TButton", command=self.update_scores).pack(anchor="e", pady=(8, 0))
 
         self.recommendations_box = scrolledtext.ScrolledText(
             self.recommendation_body,
@@ -192,22 +142,6 @@ class BioSphereAIApp(tk.Tk):
         ttk.Label(frame, text="Live environmental score", style="Body.TLabel").pack(anchor="w", pady=(4, 0))
         return frame
 
-    def on_map_click(self, coordinates):
-        lat, lon = coordinates
-        self.map_widget.delete_all_marker()
-        self.map_widget.set_marker(lat, lon, text="Selected location")
-        self.status_label.config(text=f"Using map selection at {lat:.4f}, {lon:.4f}")
-        self.update_idletasks()
-
-        try:
-            weather = self.service.get_by_coords(lat, lon)
-            self.render_weather(weather)
-            self.update_scores(weather)
-            self.status_label.config(text=f"Loaded forecast for {weather['city']}, {weather['state']}")
-        except Exception as exc:
-            messagebox.showerror("Forecast Error", f"Unable to load weather data:\n{exc}")
-            self.status_label.config(text="Unable to refresh forecast")
-
     def clear_weather_card(self):
         for widget in self.weather_body.winfo_children():
             widget.destroy()
@@ -234,45 +168,26 @@ class BioSphereAIApp(tk.Tk):
             tk.Label(weather_grid, text=f"{key}:", bg="#0f172a", fg="#94a3b8", font=("Segoe UI", 10, "bold")).grid(row=i, column=0, sticky="w", pady=(10, 0))
             tk.Label(weather_grid, text=value, bg="#0f172a", fg="#f8fafc", font=("Segoe UI", 11, "bold")).grid(row=i, column=1, sticky="w", padx=(12, 0), pady=(10, 0))
 
-    def update_scores(self, weather=None):
+    def update_scores(self, weather):
         # Recalculate all ecosystem scores and refresh the UI tiles and AI advice.
-        if weather is None:
-            weather = self.current_weather
-
-        if weather is None:
-            return
-
-        self.current_weather = weather
-
         plant = plant_score(weather)
         bee = bee_score(weather)
         butterfly = butterfly_score(weather)
-        canopy = self._read_canopy_cover()
-        canopy_value = canopy_score(weather, canopy)
-        habitat = habitat_score(plant, bee, butterfly, canopy_value)
+        habitat = habitat_score(plant, bee, butterfly)
 
         self.metric_cards["plant"].winfo_children()[1].configure(text=f"{plant}%")
         self.metric_cards["bee"].winfo_children()[1].configure(text=f"{bee}%")
         self.metric_cards["butterfly"].winfo_children()[1].configure(text=f"{butterfly}%")
-        self.metric_cards["canopy"].winfo_children()[1].configure(text=f"{canopy_value}%")
         self.metric_cards["habitat"].winfo_children()[1].configure(text=f"{habitat}%")
 
         scores = {
             "plant": plant,
             "bee": bee,
             "butterfly": butterfly,
-            "canopy": canopy_value,
             "habitat": habitat,
         }
-        user_prompt = self.prompt_entry.get().strip() if hasattr(self, "prompt_entry") else ""
         self.recommendations_box.delete("1.0", tk.END)
-        self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores, user_prompt=user_prompt))
-
-    def _read_canopy_cover(self):
-        try:
-            return max(0, min(100, float(self.canopy_entry.get().strip())))
-        except ValueError:
-            return 50
+        self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores))
 
     def load_default_data(self):
         # Load the default ZIP code when the app first opens.
