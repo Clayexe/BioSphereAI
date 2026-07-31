@@ -1,17 +1,22 @@
 from api.geocoder import Geocoder
 from api.nws import WeatherAPI
+from services.canopy_service import CanopyService
 
 # Orchestrates location lookup and live weather retrieval for the UI and scheduler.
 class WeatherService:
     def __init__(self):
-        # Compose the geocoder and weather API so the service can fetch both location and forecast data.
+        # Compose the geocoder, weather API, and canopy service for location-based insights.
         self.geocoder = Geocoder()
         self.weather_api = WeatherAPI()
+        self.canopy_service = CanopyService()
 
     def get_by_zip(self, zipcode):
         # Convert the ZIP code to coordinates, fetch weather, then merge the two payloads.
         location = self.geocoder.lookup(zipcode)
         weather = self.weather_api.current_weather(location['lat'], location['lon'])
+        canopy = self.canopy_service.sample(location['lat'], location['lon'], weather['precipitation_probability'])
+
+        weather.update(canopy)
         weather.update(location)
         weather['zip_code'] = zipcode
 
