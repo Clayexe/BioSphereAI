@@ -1,10 +1,12 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 
-from ai.ai import RecommendationAssistant
+import numpy as np
+
 from analytics.butterfly import calculate as butterfly_score
+from analytics.canopy import build_density_grid
 from analytics.habitat import calculate as habitat_score
 from analytics.plant import calculate as plant_score
 from analytics.pollinator import calculate as bee_score
@@ -38,7 +40,6 @@ class BioSphereAIApp(tk.Tk):
         self.style.configure("Search.TFrame", background="#0f172a")
 
         self.service = WeatherService()
-        self.assistant = RecommendationAssistant()
 
         self.build_layout()
         self.load_default_data()
@@ -136,23 +137,6 @@ class BioSphereAIApp(tk.Tk):
         self.canopy_chart_frame.pack(fill="both", expand=True)
         self.canopy_canvas = None
 
-        self.recommendation_card, self.recommendation_body = self.create_card(self.content_frame, "AI Assistant Recommendations")
-        self.recommendation_card.pack(fill="both", expand=True)
-
-        self.recommendations_box = scrolledtext.ScrolledText(
-            self.recommendation_body,
-            wrap=tk.WORD,
-            bg="#0b1220",
-            fg="#f8fafc",
-            insertbackground="#f8fafc",
-            relief="flat",
-            padx=12,
-            pady=10,
-            font=("Segoe UI", 10),
-            height=12,
-        )
-        self.recommendations_box.pack(fill="both", expand=True, pady=(10, 0))
-
     def create_card(self, parent, title):
         # Shared helper for producing a styled card with a title and content body.
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
@@ -207,10 +191,8 @@ class BioSphereAIApp(tk.Tk):
         self.render_canopy_chart(weather)
 
     def render_canopy_chart(self, weather):
-        # Display canopy and throughfall relationships as a simple bar chart.
+        # Display canopy density as a map-like surface with throughfall and interception labels.
         canopy = weather.get("canopy_cover", 0)
-        throughfall_pct = weather.get("throughfall_pct", 0)
-        interception_pct = 100 - throughfall_pct
         rain_chance = weather.get("precipitation_probability", 0)
         throughfall_mm = weather.get("throughfall_mm", 0)
         interception_mm = weather.get("interception_loss_mm", 0)
@@ -226,36 +208,37 @@ class BioSphereAIApp(tk.Tk):
         if self.canopy_canvas is not None:
             self.canopy_canvas.get_tk_widget().destroy()
 
-        fig, ax = plt.subplots(figsize=(8.5, 2.2), dpi=100)
+        density_grid = np.array(build_density_grid(canopy, size=14))
+
+        fig, ax = plt.subplots(figsize=(8.5, 3.2), dpi=100)
         fig.patch.set_facecolor("#07111f")
         ax.set_facecolor("#0f172a")
 
-        categories = ["Canopy", "Throughfall", "Interception"]
-        values = [canopy, throughfall_pct, interception_pct]
-        colors = ["#34d399", "#60a5fa", "#f97316"]
+        image = ax.imshow(density_grid, cmap="Greens", origin="lower", aspect="auto")
+        ax.scatter([density_grid.shape[1] // 2], [density_grid.shape[0] // 2], color="#166534", s=50, marker="o")
+        ax.set_title("Canopy density map", color="#f8fafc", pad=10)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.text(
+            0.5,
+            0.02,
+            f"Throughfall: {throughfall_mm} mm  |  Interception: {interception_mm} mm",
+            transform=ax.transAxes,
+            ha="center",
+            va="bottom",
+            color="#93c5fd",
+            fontsize=9,
+        )
 
-        bars = ax.bar(categories, values, color=colors, edgecolor="white")
-        ax.set_ylim(0, 100)
-        ax.set_ylabel("Percent", color="#f8fafc")
-        ax.set_title("Canopy cover and estimated water reaching the ground", color="#f8fafc", pad=10)
-        ax.tick_params(colors="#cbd5e1")
+        cbar = fig.colorbar(image, ax=ax, pad=0.02, shrink=0.85)
+        cbar.ax.yaxis.set_tick_params(color="#f8fafc")
+        cbar.outline.set_edgecolor("#334155")
+        cbar.ax.set_ylabel("Canopy density", color="#f8fafc", rotation=90)
+
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-        ax.spines["bottom"].set_color("#334155")
-        ax.spines["left"].set_color("#334155")
-
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(
-                f"{height:.0f}%",
-                xy=(bar.get_x() + bar.get_width() / 2, height),
-                xytext=(0, 4),
-                textcoords="offset points",
-                ha="center",
-                va="bottom",
-                color="#f8fafc",
-                fontsize=8,
-            )
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set_visible(False)
 
         self.canopy_canvas = FigureCanvasTkAgg(fig, master=self.canopy_chart_frame)
         self.canopy_canvas.draw()
@@ -276,14 +259,6 @@ class BioSphereAIApp(tk.Tk):
         self.metric_cards["habitat"].winfo_children()[1].configure(text=f"{habitat}%")
         self.metric_cards["canopy"].winfo_children()[1].configure(text=f"{canopy_value}%")
 
-        scores = {
-            "plant": plant,
-            "bee": bee,
-            "butterfly": butterfly,
-            "habitat": habitat,
-        }
-        self.recommendations_box.delete("1.0", tk.END)
-        self.recommendations_box.insert("1.0", self.assistant.summarize(weather, scores))
 
     def load_default_data(self):
         # Load the default ZIP code when the app first opens.
