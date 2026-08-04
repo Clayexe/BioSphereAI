@@ -1,37 +1,40 @@
 # BiosphereAI
 
-BiosphereAI is a Python-based ecological dashboard that combines live weather data with habitat-health scoring and AI-guided recommendations. It helps users explore environmental conditions, evaluate habitat quality, and receive actionable ideas for improving plant, pollinator, butterfly, and canopy cover outcomes.
+BiosphereAI is a Python desktop dashboard for exploring ecosystem health with live weather, canopy modeling, and habitat scoring. It combines weather fetches, geocoding, and ecological analytics to present plant, pollinator, butterfly, habitat, and canopy metrics in a Tkinter interface.
 
 ## Features
 
-- Live weather lookup by ZIP code or map selection
-- Habitat, plant, bee, butterfly, and canopy cover scoring
-- AI assistant recommendations tailored to weather conditions and user goals
-- Responsive desktop UI built with Tkinter
-- Modular analytics and service layers for easy extension
+- Live weather lookup by ZIP code or latitude/longitude
+- Plant, bee, butterfly, habitat, and canopy health scoring
+- Canopy density visualization with throughfall and interception estimates
+- Desktop dashboard built with Tkinter and Matplotlib
+- Modular backend layers for analytics, weather integration, and scheduled updates
 
 ## Project structure
 
-- app.py — desktop application entry point
-- ai/ — recommendation assistant logic
-- analytics/ — scoring modules for habitat and ecosystem health
-- api/ — weather and geocoding integrations
-- services/ — higher-level service orchestration
-- tests/ — regression tests for analytics and assistant behavior
+- `app.py` — desktop dashboard entry point
+- `analytics/` — ecosystem scoring modules
+- `api/` — geocoding and weather API integrations
+- `config/` — environment and app settings
+- `database/` — database helpers, schema, and repository code
+- `scheduler/` — scheduled updater hooks
+- `services/` — orchestration layer for weather and canopy services
+- `tests/` — automated regression tests
+- `utils/` — shared helper utilities
 
 ## Requirements
 
-Install the dependencies with:
+Install dependencies with:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-You may also need to install Tkinter support for your Python environment if it is not already present.
+> Note: Make sure your Python installation includes Tkinter support, as the desktop UI depends on it.
 
 ## Configuration
 
-The app uses environment-based configuration for external services. Create a local .env file in the project root if needed and add any required API settings.
+The app loads environment settings via `python-dotenv`. Create a `.env` file in the project root if you need to override defaults such as API configuration, database path, or logging settings.
 
 ## Running the app
 
@@ -40,13 +43,6 @@ From the project directory, run:
 ```bash
 python app.py
 ```
-
-## Example workflow
-
-1. Enter a ZIP code or click the map.
-2. Review the live weather and ecosystem metric cards.
-3. Enter a prompt such as "improve water retention and shade".
-4. Click Generate advice to receive AI-based habitat improvement suggestions.
 
 ## Testing
 
@@ -58,4 +54,4 @@ python -m pytest -q
 
 ## Notes
 
-BiosphereAI is intended as a practical prototype for environmental monitoring and habitat planning. It can be extended with richer datasets, additional ecological metrics, and more advanced AI integrations.
+BiosphereAI is designed to be extended with additional environmental data sources, richer ecological analytics, and scheduler-driven refresh workflows. The current codebase focuses on a lightweight desktop visualization experience with live weather and canopy-informed scoring.
