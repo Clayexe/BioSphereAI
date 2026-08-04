@@ -15,6 +15,25 @@ def sample_canopy_cover(lat, lon):
     return int(max(0, min(100, round(canopy))))
 
 
+def build_density_grid(canopy_cover, size=12):
+    """Create a simple 2D canopy-density surface centered on the site."""
+    canopy_cover = max(0, min(100, canopy_cover))
+    scaled = canopy_cover / 100.0
+    radius = max(1.0, size / 5.0)
+    grid = []
+
+    for row in range(size):
+        values = []
+        for col in range(size):
+            x = (col - (size - 1) / 2) / radius
+            y = (row - (size - 1) / 2) / radius
+            density = math.exp(-(x * x + y * y) / 1.8) * scaled
+            values.append(round(density, 3))
+        grid.append(values)
+
+    return grid
+
+
 def calculate_throughfall(canopy_cover, precipitation_probability):
     """Estimate water reaching the ground given canopy interception."""
     rainfall_mm = round((precipitation_probability / 100.0) * 12.0, 1)
