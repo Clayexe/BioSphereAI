@@ -34,6 +34,9 @@ class WeatherService:
     def get_by_coords(self, lat, lon):
         # Fetch weather for coordinates and merge a basic location payload.
         weather = self.weather_api.current_weather(lat, lon)
+        canopy = self.canopy_service.sample(lat, lon, weather.get('precipitation_probability', 0))
+
+        weather.update(canopy)
         location = self._reverse_geocode(lat, lon)
         weather.update({"lat": lat, "lon": lon})
         weather.update(location)
