@@ -1,13 +1,51 @@
 import math
+from pathlib import Path
 
 
-def sample_canopy_cover(lat, lon):
-    """Sample a deterministic canopy cover estimate from latitude/longitude.
+CANOPY_RASTER_PATH = Path(__file__).resolve().parents[1] / "2023 CONUS CANOPY DATA" / "science_tcc_conus_wgs84_v2023-5_20230101_20231231.tif"
 
-    In a real implementation this would read an NLCD tree canopy raster at the
-    site coordinate. For this prototype, the function returns a reproducible
-    0-100 canopy percentage based on the point location.
-    """
+
+def _sample_canopy_cover_from_raster(lat, lon, raster_path):
+    """Read canopy cover directly from the local 2023 CONUS canopy raster."""
+    if raster_path is None or not raster_path.exists():
+        return None
+
+    try:
+        import rasterio
+    except ImportError:
+        return None
+
+    try:
+        with rasterio.open(raster_path) as src:
+            raw_value = next(src.sample([(lon, lat)]))[0]
+            nodata_value = src.nodata
+    except Exception:
+        return None
+
+    if raw_value is None:
+        return None
+
+    try:
+        canopy_value = float(raw_value)
+    except (TypeError, ValueError):
+        return None
+
+    if math.isnan(canopy_value):
+        return None
+
+    if nodata_value is not None and canopy_value == nodata_value:
+        return None
+
+    return int(max(0, min(100, round(canopy_value))))
+
+
+def sample_canopy_cover(lat, lon, raster_path=None):
+    """Sample canopy cover at the given geographic coordinate."""
+    raster_path = Path(raster_path) if raster_path else CANOPY_RASTER_PATH
+    canopy_cover = _sample_canopy_cover_from_raster(lat, lon, raster_path)
+    if canopy_cover is not None:
+        return canopy_cover
+
     lat_factor = math.sin(math.radians(lat * 5)) * 0.45
     lon_factor = math.cos(math.radians(lon * 7)) * 0.35
     detail_noise = math.sin(math.radians((lat + lon) * 13)) * 0.2
