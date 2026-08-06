@@ -7,6 +7,7 @@ BiosphereAI is a Python desktop dashboard for exploring ecosystem health with li
 - Live weather lookup by ZIP code or latitude/longitude
 - Plant, bee, butterfly, habitat, and canopy health scoring
 - Canopy density visualization with throughfall and interception estimates
+- Local 2023 CONUS canopy raster integration for actual canopy coverage lookup when `rasterio` is installed
 - Desktop dashboard built with Tkinter and Matplotlib
 - Modular backend layers for analytics, weather integration, and scheduled updates
 
