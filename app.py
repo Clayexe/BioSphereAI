@@ -7,14 +7,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import numpy as np
 
-try:
-    import cairosvg
-    from PIL import Image, ImageTk
-except ImportError:
-    cairosvg = None
-    Image = None
-    ImageTk = None
-
 from analytics.butterfly import calculate as butterfly_score
 from analytics.canopy import build_density_grid
 from analytics.habitat import calculate as habitat_score
@@ -156,7 +148,13 @@ class BioSphereAIApp(tk.Tk):
 
     def _load_brand_logo(self):
         icon_path = Path(__file__).resolve().parent / "Graphics" / "biosphere logo.svg"
-        if cairosvg is None or Image is None or ImageTk is None or not icon_path.exists():
+        if not icon_path.exists():
+            return None
+
+        try:
+            import cairosvg
+            from PIL import Image, ImageTk
+        except (ImportError, OSError):
             return None
 
         try:
