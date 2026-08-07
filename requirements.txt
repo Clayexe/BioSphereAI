@@ -5,3 +5,5 @@ matplotlib
 python-dotenv
 APScheduler
 rasterio
+Pillow
+cairosvg
