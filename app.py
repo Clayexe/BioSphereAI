@@ -1,9 +1,19 @@
+import io
+from pathlib import Path
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
-
 import numpy as np
+
+try:
+    import cairosvg
+    from PIL import Image, ImageTk
+except ImportError:
+    cairosvg = None
+    Image = None
+    ImageTk = None
 
 from analytics.butterfly import calculate as butterfly_score
 from analytics.canopy import build_density_grid
@@ -40,6 +50,7 @@ class BioSphereAIApp(tk.Tk):
         self.style.configure("Search.TFrame", background="#0f172a")
 
         self.service = WeatherService()
+        self.logo_image = self._load_brand_logo()
 
         self.build_layout()
         self.load_default_data()
@@ -62,7 +73,13 @@ class BioSphereAIApp(tk.Tk):
         header = tk.Frame(self.content_frame, bg="#07111f")
         header.pack(fill="x", pady=(0, 18))
 
-        tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
+        if self.logo_image is not None:
+            logo_label = tk.Label(header, image=self.logo_image, bg="#07111f")
+            logo_label.image = self.logo_image
+            logo_label.pack(anchor="w", pady=(0, 8))
+        else:
+            tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
+
         tk.Label(header, text="A modern ecological dashboard from live weather conditions", bg="#07111f", fg="#93c5fd", font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 0))
 
         # Search / refresh area for ZIP-based weather lookup.
@@ -136,6 +153,19 @@ class BioSphereAIApp(tk.Tk):
         self.canopy_chart_frame = tk.Frame(self.canopy_body, bg="#0f172a")
         self.canopy_chart_frame.pack(fill="both", expand=True)
         self.canopy_canvas = None
+
+    def _load_brand_logo(self):
+        icon_path = Path(__file__).resolve().parent / "Graphics" / "biosphere logo.svg"
+        if cairosvg is None or Image is None or ImageTk is None or not icon_path.exists():
+            return None
+
+        try:
+            png_bytes = cairosvg.svg2png(url=str(icon_path), output_width=240)
+            image = Image.open(io.BytesIO(png_bytes))
+            photo = ImageTk.PhotoImage(image)
+            return photo
+        except Exception:
+            return None
 
     def create_card(self, parent, title):
         # Shared helper for producing a styled card with a title and content body.
