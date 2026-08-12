@@ -5,8 +5,16 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+from utils.landcover_map import build_hls_landcover_comparison, fetch_hls_comparison_images
 from analytics.butterfly import calculate as butterfly_score
 from analytics.canopy import build_density_grid
+from analytics.conservation import (
+    calculate_habitat_quality,
+    calculate_connectivity,
+    calculate_restoration_potential,
+    calculate_pollinator_suitability,
+    calculate_native_plant_support,
+)
 from analytics.habitat import calculate as habitat_score
 from analytics.plant import calculate as plant_score
 from analytics.pollinator import calculate as bee_score
@@ -58,15 +66,23 @@ class BioSphereAIApp(tk.Tk):
 
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
+        self.notebook = ttk.Notebook(self.content_frame)
+        self.notebook.pack(fill="both", expand=True)
+
+        self.overview_tab = tk.Frame(self.notebook, bg="#07111f")
+        self.conservation_tab = tk.Frame(self.notebook, bg="#07111f")
+        self.notebook.add(self.overview_tab, text="Overview")
+        self.notebook.add(self.conservation_tab, text="Conservation")
+
         # Header area for the app title and subtitle.
-        header = tk.Frame(self.content_frame, bg="#07111f")
+        header = tk.Frame(self.overview_tab, bg="#07111f")
         header.pack(fill="x", pady=(0, 18))
 
         tk.Label(header, text="🌎 BioSphereAI", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 28, "bold")).pack(anchor="w")
         tk.Label(header, text="A modern ecological dashboard from live weather conditions", bg="#07111f", fg="#93c5fd", font=("Segoe UI", 11)).pack(anchor="w", pady=(4, 0))
 
         # Search / refresh area for ZIP-based weather lookup.
-        search_frame = tk.Frame(self.content_frame, bg="#0f172a", padx=14, pady=14)
+        search_frame = tk.Frame(self.overview_tab, bg="#0f172a", padx=14, pady=14)
         search_frame.pack(fill="x", pady=(0, 16))
 
         tk.Label(search_frame, text="ZIP Code", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 11, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 12))
@@ -94,19 +110,19 @@ class BioSphereAIApp(tk.Tk):
         search_frame.columnconfigure(5, weight=1)
 
         # Weather summary card that updates whenever the ZIP code changes.
-        self.weather_card, self.weather_body = self.create_card(self.content_frame, "Current Weather")
+        self.weather_card, self.weather_body = self.create_card(self.overview_tab, "Current Weather")
         self.weather_card.pack(fill="x", pady=(0, 12))
 
         # Grid of score cards for plant, bee, butterfly, habitat, and canopy health.
-        metrics_grid = tk.Frame(self.content_frame, bg="#07111f")
+        metrics_grid = tk.Frame(self.overview_tab, bg="#07111f")
         metrics_grid.pack(fill="both", expand=True)
 
         self.metric_cards = {
-            "plant": self.create_metric_card(metrics_grid, "🌱 Plant Health", "0%"),
-            "bee": self.create_metric_card(metrics_grid, "🐝 Bee Activity", "0%"),
-            "butterfly": self.create_metric_card(metrics_grid, "🦋 Butterfly Activity", "0%"),
-            "habitat": self.create_metric_card(metrics_grid, "🌳 Habitat Health", "0%"),
-            "canopy": self.create_metric_card(metrics_grid, "🌲 Canopy Cover", "0%"),
+            "plant": self.create_metric_card(metrics_grid, "🌱 Plant Health", "0%", "Plant vigor and growth potential driven by local weather, moisture, and canopy cover."),
+            "bee": self.create_metric_card(metrics_grid, "🐝 Bee Activity", "0%", "Pollinator activity potential based on current temperature, wind, and floral conditions."),
+            "butterfly": self.create_metric_card(metrics_grid, "🦋 Butterfly Activity", "0%", "Butterfly habitat suitability estimated from temperature, humidity, and bloom support."),
+            "habitat": self.create_metric_card(metrics_grid, "🌳 Habitat Health", "0%", "Overall ecological wellness combining plant, pollinator, and canopy condition."),
+            "canopy": self.create_metric_card(metrics_grid, "🌲 Canopy Cover", "0%", "Estimated tree and foliage coverage from the local canopy model."),
         }
 
         self.metric_cards["plant"].grid(row=0, column=0, padx=(0, 12), pady=(0, 12), sticky="nsew")
@@ -119,7 +135,7 @@ class BioSphereAIApp(tk.Tk):
         metrics_grid.rowconfigure((0, 1), weight=1)
 
         # AI recommendation panel that displays practical suggestions from the live score data.
-        self.canopy_card, self.canopy_body = self.create_card(self.content_frame, "Canopy & Throughfall")
+        self.canopy_card, self.canopy_body = self.create_card(self.overview_tab, "Canopy & Throughfall")
         self.canopy_card.pack(fill="both", expand=True, pady=(0, 12))
 
         self.canopy_summary = tk.Label(
@@ -137,6 +153,56 @@ class BioSphereAIApp(tk.Tk):
         self.canopy_chart_frame.pack(fill="both", expand=True)
         self.canopy_canvas = None
 
+        self.hls_card, self.hls_body = self.create_card(self.overview_tab, "5-Mile Canopy Comparison")
+        self.hls_card.pack(fill="both", expand=True, pady=(0, 12))
+        self.hls_summary = tk.Label(
+            self.hls_body,
+            text="Comparing canopy conditions at 2015, 2020, and 2026 for the selected location.",
+            bg="#0f172a",
+            fg="#cbd5e1",
+            font=("Segoe UI", 10),
+            justify="left",
+            wraplength=920,
+        )
+        self.hls_summary.pack(fill="x", pady=(0, 12))
+        self.hls_chart_frame = tk.Frame(self.hls_body, bg="#0f172a")
+        self.hls_chart_frame.pack(fill="both", expand=True)
+        self.hls_canvas = None
+
+        conservation_header = tk.Label(self.conservation_tab, text="Conservation insights", bg="#07111f", fg="#f8fafc", font=("Segoe UI", 18, "bold"))
+        conservation_header.pack(anchor="w", pady=(0, 12), padx=16)
+
+        conservation_grid = tk.Frame(self.conservation_tab, bg="#07111f")
+        conservation_grid.pack(fill="both", expand=True, padx=16, pady=(0, 12))
+
+        self.conservation_cards = {
+            "habitat_quality": self.create_metric_card(conservation_grid, "Habitat Quality", "0%", "Evaluates local habitat condition using canopy structure, weather, and ecological balance."),
+            "connectivity": self.create_metric_card(conservation_grid, "Connectivity", "0%", "Measures landscape linkage and how easily wildlife can move between habitat patches."),
+            "restoration_potential": self.create_metric_card(conservation_grid, "Restoration Potential", "0%", "Estimates opportunities for improving habitat value through restoration actions."),
+            "pollinator": self.create_metric_card(conservation_grid, "Pollinator Habitat", "0%", "Shows how suitable the site is for bees and other pollinators based on weather and vegetation."),
+            "native_support": self.create_metric_card(conservation_grid, "Native Plant Support", "0%", "Reflects how favorable conditions are for supporting native plant communities."),
+        }
+
+        self.conservation_cards["habitat_quality"].grid(row=0, column=0, padx=(0, 12), pady=(0, 12), sticky="nsew")
+        self.conservation_cards["connectivity"].grid(row=0, column=1, padx=(0, 12), pady=(0, 12), sticky="nsew")
+        self.conservation_cards["restoration_potential"].grid(row=0, column=2, pady=(0, 12), sticky="nsew")
+        self.conservation_cards["pollinator"].grid(row=1, column=0, padx=(0, 12), sticky="nsew")
+        self.conservation_cards["native_support"].grid(row=1, column=1, sticky="nsew")
+
+        conservation_grid.columnconfigure((0, 1, 2), weight=1)
+        conservation_grid.rowconfigure((0, 1), weight=1)
+
+        self.conservation_summary = tk.Label(
+            self.conservation_tab,
+            text="Conservation metrics reflect habitat structure, species support, and restoration potential.",
+            bg="#07111f",
+            fg="#cbd5e1",
+            font=("Segoe UI", 10),
+            justify="left",
+            wraplength=920,
+        )
+        self.conservation_summary.pack(fill="x", pady=(0, 12), padx=16)
+
     def create_card(self, parent, title):
         # Shared helper for producing a styled card with a title and content body.
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
@@ -151,12 +217,12 @@ class BioSphereAIApp(tk.Tk):
         # Scroll the dashboard vertically when the user spins the mouse wheel.
         self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
 
-    def create_metric_card(self, parent, title, value):
+    def create_metric_card(self, parent, title, value, description="Live environmental score"):
         # Build the compact score tiles shown in the dashboard grid.
         frame = ttk.Frame(parent, style="Card.TFrame", padding=(16, 14))
         ttk.Label(frame, text=title, style="CardTitle.TLabel").pack(anchor="w")
         ttk.Label(frame, text=value, style="Value.TLabel").pack(anchor="w", pady=(10, 0))
-        ttk.Label(frame, text="Live environmental score", style="Body.TLabel").pack(anchor="w", pady=(4, 0))
+        ttk.Label(frame, text=description, style="Body.TLabel", wraplength=220, justify="left").pack(anchor="w", pady=(4, 0))
         return frame
 
     def clear_weather_card(self):
@@ -245,6 +311,81 @@ class BioSphereAIApp(tk.Tk):
         self.canopy_canvas.get_tk_widget().pack(fill="both", expand=True)
         plt.close(fig)
 
+        self.render_hls_year_comparison(weather)
+
+    def render_hls_year_comparison(self, weather):
+        # Show a 5-mile canopy comparison for the selected site across HLS years.
+        try:
+            lon = float(self.lon_entry.get().strip()) if self.lon_entry.get().strip() else -88.6
+            lat = float(self.lat_entry.get().strip()) if self.lat_entry.get().strip() else 26.4
+        except ValueError:
+            lon = -88.6
+            lat = 26.4
+
+        specs = build_hls_landcover_comparison(center_lon=lon, center_lat=lat, years=(2015, 2020, 2026), tile_size_miles=5.0)
+        if self.hls_canvas is not None:
+            self.hls_canvas.get_tk_widget().destroy()
+
+        image_records = []
+        try:
+            image_records = fetch_hls_comparison_images(center_lon=lon, center_lat=lat, years=(2015, 2020, 2026), tile_size_miles=5.0)
+        except Exception as e:
+            print(f"Earth Engine fetch error: {e}")
+            # Fall back to empty list for synthetic rendering
+            image_records = []
+
+        fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.3), dpi=100)
+        fig.patch.set_facecolor("#07111f")
+
+        rendered_any = False
+        for axis, spec in zip(axes, specs):
+            record = next((item for item in image_records if item["year"] == spec["year"]), None)
+            image = record["image"] if record else None
+            axis.set_facecolor("#0f172a")
+
+            if image is not None:
+                axis.imshow(np.asarray(image))
+                axis.set_title(f"{spec['year']} - {spec['dataset'].split('/')[-2]}", color="#f8fafc", fontsize=10)
+                rendered_any = True
+            else:
+                year_shift = spec["year"] - 2020
+                year_canopy = max(0.0, min(100.0, float(weather.get("canopy_cover", 55)) + (year_shift * 2.0)))
+                year_grid = np.linspace(-1.0, 1.0, 28)
+                xx, yy = np.meshgrid(year_grid, year_grid)
+                distance = np.sqrt(xx ** 2 + yy ** 2)
+                canopy_surface = np.clip(1.0 - distance * 1.2, 0.0, 1.0)
+                canopy_surface = canopy_surface * (year_canopy / 100.0)
+                axis.imshow(canopy_surface, cmap="Greens", origin="lower", vmin=0.0, vmax=1.0)
+                axis.set_title(f"{spec['year']} - fallback", color="#f8fafc", fontsize=10)
+
+            axis.set_xticks([])
+            axis.set_yticks([])
+            axis.text(
+                0.5,
+                0.02,
+                "5-mi window",
+                transform=axis.transAxes,
+                ha="center",
+                va="bottom",
+                color="#bfdbfe",
+                fontsize=8,
+            )
+
+        fig.suptitle(f"Canopy comparison for {lat:.2f}, {lon:.2f}", color="#f8fafc", fontsize=12)
+        fig.tight_layout(rect=(0, 0, 1, 0.96))
+
+        self.hls_canvas = FigureCanvasTkAgg(fig, master=self.hls_chart_frame)
+        self.hls_canvas.draw()
+        self.hls_canvas.get_tk_widget().pack(fill="both", expand=True)
+        
+        if rendered_any:
+            summary = "✓ Real NASA HLS satellite imagery for the selected 5-mile area across years 2015, 2020, and 2026."
+        else:
+            summary = "Showing synthetic canopy model (Earth Engine unavailable). To use real satellite imagery: (1) Create a Google Cloud project, (2) Enable Earth Engine API, (3) Run 'python -m earthengine authenticate' to authorize with your project."
+        
+        self.hls_summary.config(text=summary)
+        plt.close(fig)
+
     def update_scores(self, weather):
         # Recalculate all ecosystem scores and refresh the UI tiles and AI advice.
         plant = plant_score(weather)
@@ -258,6 +399,26 @@ class BioSphereAIApp(tk.Tk):
         self.metric_cards["butterfly"].winfo_children()[1].configure(text=f"{butterfly}%")
         self.metric_cards["habitat"].winfo_children()[1].configure(text=f"{habitat}%")
         self.metric_cards["canopy"].winfo_children()[1].configure(text=f"{canopy_value}%")
+
+    def render_conservation_tab(self, weather):
+        habitat_quality = calculate_habitat_quality(weather)
+        connectivity = calculate_connectivity(weather)
+        restoration = calculate_restoration_potential(weather)
+        pollinator = calculate_pollinator_suitability(weather)
+        native_support = calculate_native_plant_support(weather)
+
+        self.conservation_cards["habitat_quality"].winfo_children()[1].configure(text=f"{habitat_quality}%")
+        self.conservation_cards["connectivity"].winfo_children()[1].configure(text=f"{connectivity}%")
+        self.conservation_cards["restoration_potential"].winfo_children()[1].configure(text=f"{restoration}%")
+        self.conservation_cards["pollinator"].winfo_children()[1].configure(text=f"{pollinator}%")
+        self.conservation_cards["native_support"].winfo_children()[1].configure(text=f"{native_support}%")
+
+        self.conservation_summary.config(
+            text=(
+                f"Habitat quality is {habitat_quality}%. Connectivity is {connectivity}%. "
+                f"Restoration potential is {restoration}%. Pollinator habitat is {pollinator}% and "
+                f"native plant support is {native_support}%.")
+        )
 
 
     def load_default_data(self):
@@ -291,6 +452,7 @@ class BioSphereAIApp(tk.Tk):
             weather = fetch_method()
             self.render_weather(weather)
             self.update_scores(weather)
+            self.render_conservation_tab(weather)
             self.status_label.config(text=f"Loaded forecast for {weather.get('city', '')}, {weather.get('state', '')}")
         except Exception as exc:
             messagebox.showerror("Forecast Error", f"Unable to load weather data:\n{exc}")
