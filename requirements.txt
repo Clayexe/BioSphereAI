@@ -1,9 +1,12 @@
 streamlit
 requests
 pandas
+numpy
 matplotlib
 python-dotenv
 APScheduler
 rasterio
-Pillow
-cairosvg
+pillow
+earthengine-api
+requests
+geemap
