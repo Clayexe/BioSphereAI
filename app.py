@@ -93,10 +93,12 @@ class BioSphereAIApp(tk.Tk):
 
         tk.Label(search_frame, text="Latitude", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 11, "bold")).grid(row=0, column=2, sticky="w", padx=(0, 12))
         self.lat_entry = ttk.Entry(search_frame, width=10, style="Search.TEntry")
+        self.lat_entry.insert(0, "42.10")
         self.lat_entry.grid(row=0, column=3, sticky="ew", padx=(0, 12))
 
         tk.Label(search_frame, text="Longitude", bg="#0f172a", fg="#e2e8f0", font=("Segoe UI", 11, "bold")).grid(row=0, column=4, sticky="w", padx=(0, 12))
         self.lon_entry = ttk.Entry(search_frame, width=10, style="Search.TEntry")
+        self.lon_entry.insert(0, "-76.05")
         self.lon_entry.grid(row=0, column=5, sticky="ew", padx=(0, 12))
 
         self.search_button = ttk.Button(search_frame, text="Refresh forecast", style="Primary.TButton", command=self.load_location_data)
@@ -326,15 +328,12 @@ class BioSphereAIApp(tk.Tk):
         if self.hls_canvas is not None:
             self.hls_canvas.get_tk_widget().destroy()
 
-        image_records = []
         try:
             image_records = fetch_hls_comparison_images(center_lon=lon, center_lat=lat, years=(2015, 2020, 2026), tile_size_miles=5.0)
-        except Exception as e:
-            print(f"Earth Engine fetch error: {e}")
-            # Fall back to empty list for synthetic rendering
+        except Exception:
             image_records = []
 
-        fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.3), dpi=100)
+        fig, axes = plt.subplots(1, 3, figsize=(12, 4.5), dpi=100)
         fig.patch.set_facecolor("#07111f")
 
         rendered_any = False
@@ -377,11 +376,10 @@ class BioSphereAIApp(tk.Tk):
         self.hls_canvas = FigureCanvasTkAgg(fig, master=self.hls_chart_frame)
         self.hls_canvas.draw()
         self.hls_canvas.get_tk_widget().pack(fill="both", expand=True)
-        
         if rendered_any:
-            summary = "✓ Real NASA HLS satellite imagery for the selected 5-mile area across years 2015, 2020, and 2026."
+            summary = "Real NASA HLS satellite imagery for the selected 5-mile area across years 2015, 2020, and 2026."
         else:
-            summary = "Showing synthetic canopy model (Earth Engine unavailable). To use real satellite imagery: (1) Create a Google Cloud project, (2) Enable Earth Engine API, (3) Run 'python -m earthengine authenticate' to authorize with your project."
+            summary = f"Showing synthetic canopy model (Earth Engine unavailable). To use real satellite imagery: install Python from python.org, then run 'pip install earthengine-api' and 'python -m earthengine authenticate'."
         
         self.hls_summary.config(text=summary)
         plt.close(fig)
@@ -450,6 +448,12 @@ class BioSphereAIApp(tk.Tk):
 
         try:
             weather = fetch_method()
+            if 'latitude' in weather and 'longitude' in weather:
+                self.lat_entry.delete(0, tk.END)
+                self.lat_entry.insert(0, f"{weather['latitude']:.4f}")
+                self.lon_entry.delete(0, tk.END)
+                self.lon_entry.insert(0, f"{weather['longitude']:.4f}")
+                
             self.render_weather(weather)
             self.update_scores(weather)
             self.render_conservation_tab(weather)
@@ -458,6 +462,8 @@ class BioSphereAIApp(tk.Tk):
             messagebox.showerror("Forecast Error", f"Unable to load weather data:\n{exc}")
             self.status_label.config(text="Unable to refresh forecast")
 
+        except Exception as e:
+            print(f"Error occurred while fetching weather data: {e}")
 
 if __name__ == "__main__":
     app = BioSphereAIApp()
